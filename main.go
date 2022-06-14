@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/btcsuite/btcutil/bech32"
+	"github.com/decred/dcrd/bech32"
 	"github.com/decred/dcrd/dcrec/secp256k1"
 )
 
@@ -36,13 +36,17 @@ func generateWallet() (*wallet, error) {
 		err              error
 	)
 
-	byteSlice, err = bech32.ConvertBits(pubKeyCompressed, 8, 5, true)
+	prepended := append([]byte("\x04"), pubKeyCompressed...)
+
+	byteSlice, err = bech32.ConvertBits(prepended, 8, 5, true)
 	if err != nil {
+		log.Println("ConvertBits err")
 		return nil, err
 	}
 
 	address, err = bech32.Encode("rdx", byteSlice)
 	if err != nil {
+		log.Println("bech32 Encode err")
 		return nil, err
 	}
 
@@ -54,7 +58,10 @@ func generateWallet() (*wallet, error) {
 }
 
 func matches(address string) bool {
-	lookFor := []string{"radix", "radogs"}
+	lookFor := []string{
+		"radix",
+		"radogs",
+	}
 
 	for _, suffix := range lookFor {
 		if strings.HasSuffix(address, suffix) {
@@ -95,9 +102,6 @@ func main() {
 				} else {
 					totalChecked = totalChecked + 1
 				}
-
-				// Log
-				log.Println(address[len(address)-5:])
 			}
 
 			stop <- true
