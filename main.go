@@ -3,15 +3,17 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"github.com/radogs/radix-vanity-address-generator/config"
-	"github.com/radogs/radix-vanity-address-generator/validator"
-	"github.com/radogs/radix-vanity-address-generator/wallet"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/radogs/radix-vanity-address-generator/config"
+	"github.com/radogs/radix-vanity-address-generator/validator"
+	"github.com/radogs/radix-vanity-address-generator/wallet"
 )
 
 func main() {
@@ -25,23 +27,39 @@ func main() {
 	fmt.Println("Enter your desired wallet suffix")
 	fmt.Println("comma delimited, use the following format: d0gs,w00f,nfts")
 	fmt.Println("For a single match just type the word: sweet")
-	fmt.Println("The longer the word the longer it will take. Try not to use 'o'")
+	fmt.Println("The longer the word the longer it will take!")
 
 	wordsInput := bufio.NewScanner(os.Stdin)
 	wordsInput.Scan()
 
 	lookFor, err := validator.Validate(wordsInput.Text())
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
+
+	fmt.Println("Would you like a mnemonic phrase ( 12 words for your wallet seed)? Y/n (mnemonic mode is currently a lot slower..)")
+	wordsInput = bufio.NewScanner(os.Stdin)
+	wordsInput.Scan()
 
 	c := config.NewConfig()
 	c.SetWords(lookFor)
+	c.SetMnemonicMode(validator.ParseYn(wordsInput.Text()))
 
 	err = work(c)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
+}
+
+// @TODO move this to the generator package
+func generate(isMnemonicMode bool) func() (*wallet.Wallet, error) {
+	if isMnemonicMode {
+		fmt.Println("Entering MnemonicMode")
+		return wallet.GenerateWalletV2
+	}
+
+	fmt.Println("Entering quickMode")
+	return wallet.GenerateWallet
 }
 
 func work(c *config.Config) error {
@@ -57,10 +75,11 @@ func work(c *config.Config) error {
 
 	fmt.Println("Woof! Let's go!")
 	logAt = startedAt.Add(30 * time.Second)
+	generateWallet := generate(c.GetMnemonicMode())
 
 	go func() {
 		for {
-			generatedWallet, err := wallet.GenerateWallet()
+			generatedWallet, err := generateWallet()
 			if err != nil {
 				mutex.Lock()
 				resError = err
@@ -130,8 +149,12 @@ func writeFile(wallet *wallet.Wallet) error {
 	}
 	exPath := filepath.Dir(ex)
 
-	result := fmt.Sprintf("Address:\n%s\nPublic key:\n%s\nPrivate key:\n%s",
-		wallet.Address, wallet.PublicKey, wallet.PrivateKey)
+	result := fmt.Sprintf(`
+Address: %s
+Public key: %s
+Private key: %s
+mnemonic phrase: %s`,
+		wallet.Address, wallet.PublicKey, wallet.PrivateKey, wallet.Mnemonic)
 
 	err = ioutil.WriteFile(fmt.Sprintf("%s/%s.txt", exPath, wallet.Address), []byte(result), 0644)
 	if err != nil {

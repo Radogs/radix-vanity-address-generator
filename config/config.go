@@ -5,18 +5,20 @@ const (
 )
 
 type Config struct {
-	searchWords map[string]bool
-	found       int
-	total       int
-	mode        string
+	searchWords    map[string]bool
+	found          int
+	total          int
+	mode           string
+	isMnemonicMode bool
 }
 
 func NewConfig() *Config {
 	return &Config{
-		searchWords: map[string]bool{},
-		found:       0,
-		total:       0,
-		mode:        mainnetMode,
+		searchWords:    map[string]bool{},
+		found:          0,
+		total:          0,
+		mode:           mainnetMode,
+		isMnemonicMode: false,
 	}
 }
 
@@ -32,7 +34,7 @@ func (c *Config) Match(word string) {
 func (c *Config) SetWords(words []string) {
 	for i, word := range words {
 		c.searchWords[word] = false
-		c.total = i
+		c.total = i + 1
 	}
 }
 
@@ -43,6 +45,14 @@ func (c *Config) GetWords() (words []string) {
 		}
 	}
 	return
+}
+
+func (c *Config) SetMnemonicMode(isMnemonicMode bool) {
+	c.isMnemonicMode = isMnemonicMode
+}
+
+func (c *Config) GetMnemonicMode() bool {
+	return c.isMnemonicMode
 }
 
 func (c *Config) Found() int {

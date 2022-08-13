@@ -1,20 +1,21 @@
 # Radogs Radix DLT vanity address generator
-Attempts to generate a Radix mainnet vanity wallet address with keys and writes them to the current folder. **DO NOT SHARE THOSE WITH ANYONE!!!**
+Attempts to generate a vanity wallet address with keys or mnemnoic phrase and writes them to .txt files in the current folder. 
 
-# How long will it take to generate my address?
-Sadly a lot depends on luck, the shorter the lookup word the quicker it will be. Words that are too long might never get generated. Indications might be added here later.
+**DO NOT SHARE THOSE WITH ANYONE!!!**
 
-# Work in progress
+## What is the difference between mnemnoic and quick mode?
+If you plan to use your address with an (hd) wallet like Radix wallet. You will need to use the mnemonic phrase to use this address in your wallet. Quick mode is for developers that for example only require the secret to sign transactions.
+
+## How long will it take to generate my address?
+The shorter the lookup word the quicker it will be. We recommend a max of 4-5 characters. Benchmarks will be added here later.
+
+## Work in progress
 This is still a work in progress.
 
 Todo list:
-- Improve speed
-- Stokenet
+- Improve speed for mnemoric mode.
 - Move some logic out of main.go
-- Add tests
-
-# How to use
-Simply run main.go and hope for the best ;-)
+- Add more test coverage
 
 ## Powered by Radogs
 Woof! Check us out at https://radogs.tech!
