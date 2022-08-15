@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/radogs/radix-vanity-address-generator/config"
@@ -64,63 +63,43 @@ func generate(isMnemonicMode bool) func() (*wallet.Wallet, error) {
 
 func work(c *config.Config) error {
 	var (
-		startedAt    = time.Now()
-		mutex        = sync.Mutex{}
-		stop         = make(chan bool)
-		lookFor      = c.GetWords()
-		logAt        time.Time
-		totalChecked = 0
-		resError     error
+		generateWallet = generate(c.GetMnemonicMode())
+		startedAt      = time.Now()
+		lookFor        = c.GetWords()
+		logAt          = startedAt.Add(30 * time.Second)
+		totalChecked   = 0
 	)
 
 	fmt.Println("Woof! Let's go!")
-	logAt = startedAt.Add(30 * time.Second)
-	generateWallet := generate(c.GetMnemonicMode())
-
-	go func() {
-		for {
-			generatedWallet, err := generateWallet()
-			if err != nil {
-				mutex.Lock()
-				resError = err
-				break
-			}
-
-			match := matches(lookFor, generatedWallet.Address)
-			if match != nil {
-				writeErr := writeFile(generatedWallet)
-				if writeErr != nil {
-					mutex.Lock()
-					resError = err
-					break
-				}
-				c.Match(*match)
-				lookFor = c.GetWords()
-
-				fmt.Printf("Matched %s! %d out of %d matched\n", *match, c.Found(), c.Total())
-				if len(lookFor) == 0 {
-					mutex.Lock()
-					break
-				}
-			} else {
-				now := time.Now()
-				totalChecked = totalChecked + 1
-
-				if now.After(logAt) {
-					timeRan := now.Sub(startedAt)
-					fmt.Printf("Generated %d wallets in %.1f minutes. %d/%d matches\n", totalChecked, timeRan.Minutes(), c.Found(), c.Total())
-					logAt = now.Add(30 * time.Second)
-				}
-			}
+	for {
+		generatedWallet, err := generateWallet()
+		if err != nil {
+			return err
 		}
 
-		stop <- true
-		mutex.Unlock()
-	}()
-	<-stop
+		match := matches(lookFor, generatedWallet.Address)
+		if match != nil {
+			writeErr := writeFile(generatedWallet)
+			if writeErr != nil {
+				return writeErr
+			}
+			c.Match(*match)
+			lookFor = c.GetWords()
 
-	if resError != nil {
-		return resError
+			fmt.Printf("Matched %s! %d out of %d matched\n", *match, c.Found(), c.Total())
+			if len(lookFor) == 0 {
+				break
+			}
+		} else {
+			now := time.Now()
+			totalChecked = totalChecked + 1
+
+			if now.After(logAt) {
+				timeRan := now.Sub(startedAt)
+				fmt.Printf("Generated %d wallets in %.1f minutes. %d/%d matches\n", totalChecked, timeRan.Minutes(), c.Found(), c.Total())
+				logAt = now.Add(30 * time.Second)
+			}
+		}
 	}
 
 	timeRan := time.Now().Sub(startedAt)
@@ -156,10 +135,5 @@ Private key: %s
 mnemonic phrase: %s`,
 		wallet.Address, wallet.PublicKey, wallet.PrivateKey, wallet.Mnemonic)
 
-	err = ioutil.WriteFile(fmt.Sprintf("%s/%s.txt", exPath, wallet.Address), []byte(result), 0644)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return ioutil.WriteFile(fmt.Sprintf("%s/%s.txt", exPath, wallet.Address), []byte(result), 0644)
 }
