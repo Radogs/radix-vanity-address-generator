@@ -1,6 +1,6 @@
 module github.com/radogs/radix-vanity-address-generator
 
-go 1.18
+go 1.19
 
 require (
 	github.com/decred/dcrd/bech32 v1.1.2

@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -27,13 +26,21 @@ func main() {
 	fmt.Println("comma delimited, use the following format: d0gs,w00f,nfts")
 	fmt.Println("For a single match just type the word: sweet")
 	fmt.Println("The longer the word the longer it will take!")
+	var (
+		wordsInput = bufio.NewScanner(os.Stdin)
+		lookFor    []string
+		err        error
+	)
 
-	wordsInput := bufio.NewScanner(os.Stdin)
-	wordsInput.Scan()
+	for true {
+		wordsInput.Scan()
 
-	lookFor, err := validator.Validate(wordsInput.Text())
-	if err != nil {
-		log.Fatal(err)
+		lookFor, err = validator.Validate(wordsInput.Text())
+		if err != nil {
+			fmt.Printf("%s\n", err.Error())
+			continue
+		}
+		break
 	}
 
 	fmt.Println("Would you like a mnemonic phrase ( 12 words for your wallet seed)? Y/n (mnemonic mode is currently a lot slower..)")
@@ -79,7 +86,7 @@ func work(c *config.Config) error {
 
 		match := matches(lookFor, generatedWallet.Address)
 		if match != nil {
-			writeErr := writeFile(generatedWallet)
+			writeErr := writeResult(generatedWallet)
 			if writeErr != nil {
 				return writeErr
 			}
@@ -121,19 +128,35 @@ func matches(lookFor []string, address string) *string {
 	return nil
 }
 
-func writeFile(wallet *wallet.Wallet) error {
+func writeResult(wallet *wallet.Wallet) error {
+	format := `
+Address: %s
+Public key: %s
+Private key: %s
+mnemonic phrase: %s`
+
+	if detectDocker() {
+		log.Printf(format,
+			wallet.Address, wallet.PublicKey, wallet.PrivateKey, wallet.Mnemonic)
+		return nil
+	}
+
 	ex, err := os.Executable()
 	if err != nil {
 		return err
 	}
 	exPath := filepath.Dir(ex)
 
-	result := fmt.Sprintf(`
-Address: %s
-Public key: %s
-Private key: %s
-mnemonic phrase: %s`,
+	result := fmt.Sprintf(format,
 		wallet.Address, wallet.PublicKey, wallet.PrivateKey, wallet.Mnemonic)
 
-	return ioutil.WriteFile(fmt.Sprintf("%s/%s.txt", exPath, wallet.Address), []byte(result), 0644)
+	return os.WriteFile(fmt.Sprintf("%s/%s.txt", exPath, wallet.Address), []byte(result), 0644)
+}
+
+func detectDocker() bool {
+	if _, err := os.Stat("/.dockerenv"); err == nil {
+		return true
+	}
+
+	return false
 }

@@ -24,3 +24,4 @@ go.work
 ./*.txt
 *.txt
 main
+radix-vanity
